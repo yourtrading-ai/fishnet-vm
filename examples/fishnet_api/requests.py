@@ -45,6 +45,3 @@ class RequestExecutionResponse(BaseModel):
     execution: Execution
     permissionRequests: Optional[List[Permission]]
     unavailableTimeseries: Optional[List[Timeseries]]
-
-
-

@@ -98,14 +98,20 @@ async def index():
 
 
 @app.get("/datasets")
-async def datasets(view_as: Optional[str], by: Optional[str], page: Optional[int], page_size: Optional[int]) -> List[
-    Tuple[Dataset, Optional[DatasetPermissionStatus]]]:
+async def datasets(
+    view_as: Optional[str],
+    by: Optional[str],
+    page: Optional[int],
+    page_size: Optional[int],
+) -> List[Tuple[Dataset, Optional[DatasetPermissionStatus]]]:
     """
     Get all datasets. Returns a list of tuples of datasets and their permission status for the given `view_as` user.
     If `view_as` is not given, the permission status will be `none` for all datasets.
 
     :param view_as: address of the user to view the datasets as and give additional permission information
     :param by: address of the dataset owner to filter by
+    :param page_size: size of the pages to fetch
+    :param page: page number to fetch
     """
     # TODO:
     # - for the Owner (by) parameter:
@@ -140,7 +146,9 @@ async def datasets(view_as: Optional[str], by: Optional[str], page: Optional[int
 
     for rec in dataset_by_requestor:
         #   - get all permissions for each timeseries & given requestor
-        permission_records = await Permission.where_eq(timeseriesID=rec.timeseriesIDs, requestor=view_as)
+        permission_records = await Permission.where_eq(
+            timeseriesID=rec.timeseriesIDs, requestor=view_as
+        )
         permission_status = []
         # if there is no permission records its mean  dataset are not requested
         if not permission_records:
@@ -166,7 +174,9 @@ async def datasets(view_as: Optional[str], by: Optional[str], page: Optional[int
 
 
 @app.get("/algorithms")
-async def get_algorithms(page: Optional[int], page_size: Optional[int]) -> List[Algorithm]:
+async def get_algorithms(
+    page: Optional[int], page_size: Optional[int]
+) -> List[Algorithm]:
     return await Algorithm.fetch_all(page=page, page_size=page_size)
 
 
@@ -176,7 +186,9 @@ async def get_user_algorithms(address: str) -> List[Algorithm]:
 
 
 @app.get("/executions")
-async def get_executions(page: Optional[int], page_size: Optional[int]) -> List[Execution]:
+async def get_executions(
+    page: Optional[int], page_size: Optional[int]
+) -> List[Execution]:
     return await Execution.fetch_all(page=page, page_size=page_size)
 
 
@@ -234,7 +246,10 @@ async def upload_timeseries(req: UploadTimeseriesRequest) -> List[Timeseries]:
             continue
         old_ts: Timeseries = old_time_series[ts.id_hash]
         if ts.owner != old_ts.owner:
-            raise HTTPException(status_code=403, detail="Cannot overwrite timeseries that is not owned by you")
+            raise HTTPException(
+                status_code=403,
+                detail="Cannot overwrite timeseries that is not owned by you",
+            )
         old_ts.name = ts.name
         old_ts.data = ts.data
         old_ts.desc = ts.desc
@@ -261,7 +276,10 @@ async def upload_dataset(dataset: UploadDatasetRequest) -> Dataset:
         old_dataset = resp[0] if resp else None
         if old_dataset is not None:
             if old_dataset.owner != dataset.owner:
-                raise HTTPException(status_code=403, detail="Cannot overwrite dataset that is not owned by you")
+                raise HTTPException(
+                    status_code=403,
+                    detail="Cannot overwrite dataset that is not owned by you",
+                )
             old_dataset.name = dataset.name
             old_dataset.desc = dataset.desc
             old_dataset.timeseriesIDs = dataset.timeseriesIDs
@@ -282,7 +300,10 @@ async def upload_algorithm(algorithm: UploadAlgorithmRequest) -> Algorithm:
         old_algorithm = resp[0] if resp else None
         if old_algorithm is not None:
             if old_algorithm.owner != algorithm.owner:
-                raise HTTPException(status_code=403, detail="Cannot overwrite algorithm that is not owned by you")
+                raise HTTPException(
+                    status_code=403,
+                    detail="Cannot overwrite algorithm that is not owned by you",
+                )
             old_algorithm.name = algorithm.name
             old_algorithm.desc = algorithm.desc
             old_algorithm.code = algorithm.code
@@ -292,7 +313,7 @@ async def upload_algorithm(algorithm: UploadAlgorithmRequest) -> Algorithm:
 
 @app.post("/executions/request")
 async def request_execution(
-        execution: RequestExecutionRequest,
+    execution: RequestExecutionRequest,
 ) -> RequestExecutionResponse:
     """
     This endpoint is used to request an execution.
@@ -308,13 +329,17 @@ async def request_execution(
     # allow execution if dataset owner == execution owner
     if dataset.owner == execution.owner and dataset.ownsAllTimeseries:
         execution.status = ExecutionStatus.PENDING
-        return RequestExecutionResponse(execution=await Execution(**execution.dict()).save())
+        return RequestExecutionResponse(
+            execution=await Execution(**execution.dict()).save()
+        )
 
     # check if execution owner has permission to read all timeseries
     requested_timeseries = await Timeseries.fetch(dataset.timeseriesIDs)
     permissions = {
         permission.timeseriesID: permission
-        for permission in await Permission.where_eq(timeseriesID=dataset.timeseriesIDs, requestor=execution.owner)
+        for permission in await Permission.where_eq(
+            timeseriesID=dataset.timeseriesIDs, requestor=execution.owner
+        )
     }
     requests = []
     unavailable_timeseries = []
@@ -387,7 +412,9 @@ async def approve_permissions(permission_hashes: List[str]) -> List[Permission]:
 
     permission_records = await Permission.fetch(permission_hashes)
     if not permission_records:
-        raise HTTPException(status_code=404, detail="No Permission Found with this Hashes")
+        raise HTTPException(
+            status_code=404, detail="No Permission Found with this Hashes"
+        )
 
     for rec in permission_records:
         rec.status = PermissionStatus.GRANTED
@@ -422,7 +449,9 @@ async def deny_permissions(permission_hashes: List[str]) -> List[Permission]:
     """
     permission_records = await Permission.fetch(permission_hashes)
     if not permission_records:
-        raise HTTPException(status_code=404, detail="No Permission found with this Hashes")
+        raise HTTPException(
+            status_code=404, detail="No Permission found with this Hashes"
+        )
 
     ts_ids = []
     requests = []
@@ -441,7 +470,7 @@ async def deny_permissions(permission_hashes: List[str]) -> List[Permission]:
     executions_records = await Execution.where_eq(datasetID=ds_ids)
     for rec in executions_records:
         # get all executions that are waiting for this permission(status == PENDING) and update their status to DENIED
-        if (rec.datasetID in ds_ids and rec.status == ExecutionStatus.PENDING):
+        if rec.datasetID in ds_ids and rec.status == ExecutionStatus.PENDING:
             rec.status = ExecutionStatus.DENIED
             requests.append(rec.save())
     # parellel processed
