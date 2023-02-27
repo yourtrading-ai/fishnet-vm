@@ -101,7 +101,8 @@ async def index():
 async def datasets(view_as: Optional[str], by: Optional[str], page: Optional[int], page_size: Optional[int]) -> List[
     Tuple[Dataset, Optional[DatasetPermissionStatus]]]:
     """
-    Get all datasets.
+    Get all datasets. Returns a list of tuples of datasets and their permission status for the given `view_as` user.
+    If `view_as` is not given, the permission status will be `none` for all datasets.
 
     :param view_as: address of the user to view the datasets as and give additional permission information
     :param by: address of the dataset owner to filter by
@@ -110,9 +111,12 @@ async def datasets(view_as: Optional[str], by: Optional[str], page: Optional[int
     # - for the Owner (by) parameter:
     #     - fetch all datasets for the owner
 
-    ds_by_owner = await Dataset.fetch_all(page=page, page_size=page_size)
+    if by:
+        datasets = await Dataset.where_eq(owner=by)
+    else:
+        datasets = await Dataset.fetch_all(page=page, page_size=page_size)
     ts_ids = []
-    for rec in ds_by_owner:
+    for rec in datasets:
         ts_ids.append(rec.timeseriesIDs)
 
     # convert into numpy array
