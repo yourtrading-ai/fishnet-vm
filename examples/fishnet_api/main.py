@@ -113,9 +113,6 @@ async def datasets(
     :param page_size: size of the pages to fetch
     :param page: page number to fetch
     """
-    # TODO:
-    # - for the Owner (by) parameter:
-    #     - fetch all datasets for the owner
 
     if by:
         datasets = await Dataset.where_eq(owner=by)
@@ -167,16 +164,19 @@ async def datasets(
     return returned_datasets
 
 
-# This is not necessary, as it will be replaced by GET /datasets?by={address}
-# @app.get("/user/{address}/datasets")
-# async def get_user_datasets(address: str) -> List[Dataset]:
-#    return await Dataset.save(owner=address)
-
-
 @app.get("/algorithms")
 async def get_algorithms(
-    page: Optional[int], page_size: Optional[int]
+    page: Optional[int], page_size: Optional[int], by: Optional[str]
 ) -> List[Algorithm]:
+    """
+    Get all algorithms.
+
+    :param page_size: size of the pages to fetch
+    :param page: page number to fetch
+    :param by: address of the algorithm owner to filter by
+    """
+    if by:
+        return await Algorithm.where_eq(owner=by)
     return await Algorithm.fetch_all(page=page, page_size=page_size)
 
 
