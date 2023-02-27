@@ -1,4 +1,4 @@
-aleph-client
+aleph-sdk-python
 aars
 fishnet-cod
 fastapi
