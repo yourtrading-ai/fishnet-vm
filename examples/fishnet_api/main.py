@@ -146,19 +146,18 @@ async def datasets(
         permission_records = await Permission.where_eq(
             timeseriesID=rec.timeseriesIDs, requestor=view_as
         )
-        permission_status = []
-        # if there is no permission records its mean  dataset are not requested
         if not permission_records:
             returned_datasets.append((rec, DatasetPermissionStatus.NOT_REQUESTED))
+            continue
+
+        permission_status = []
         for perm_rec in permission_records:
             permission_status.append(perm_rec.status)
-        #   - respond with permission for dataset as approved, if all permissions are approved
+
         if all(status == PermissionStatus.GRANTED for status in permission_status):
             returned_datasets.append((rec, DatasetPermissionStatus.GRANTED))
-        #     - respond with denied if at least one is denied
         elif PermissionStatus.DENIED in permission_status:
             returned_datasets.append((rec, DatasetPermissionStatus.DENIED))
-        #     - respond with pending if at least one is still pending
         elif PermissionStatus.REQUESTED in permission_status:
             returned_datasets.append((rec, DatasetPermissionStatus.REQUESTED))
     return returned_datasets
