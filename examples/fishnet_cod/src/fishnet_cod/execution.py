@@ -68,7 +68,7 @@ async def run_execution(execution: Execution) -> Optional[Execution]:
 
         try:
             assert "run" in locals()
-            result = locals()["run"](df)
+            result = locals()["run"](df, **execution.params)
         except Exception as e:
             return await set_failed(execution, f"Failed to run algorithm: {e}")
 

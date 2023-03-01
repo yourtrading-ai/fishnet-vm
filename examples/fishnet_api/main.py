@@ -100,6 +100,7 @@ async def index():
 @app.get("/datasets")
 async def datasets(
     view_as: Optional[str],
+    requested_by: Optional[str],
     by: Optional[str],
     page: Optional[int],
     page_size: Optional[int],
