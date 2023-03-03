@@ -1,5 +1,21 @@
 import pandas as pd
+from aleph_message.models import PostMessage
+from pydantic import ValidationError
+
 from .model import *
+
+
+async def try_get_execution_from_message(message: PostMessage) -> Optional[Execution]:
+    if message.content.type in ["Execution"]:
+        execution = await Execution.from_post(message)
+    else:  # amend
+        try:
+            execution = await Execution.fetch(message.content.ref)
+        except ValidationError:
+            return None
+    if isinstance(execution, Execution):
+        return execution
+    return None
 
 
 async def run_execution(execution: Execution) -> Optional[Execution]:

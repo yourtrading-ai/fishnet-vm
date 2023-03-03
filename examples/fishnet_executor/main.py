@@ -41,10 +41,5 @@ filters = [
 
 @app.event(filters=filters)
 async def handle_execution(event: PostMessage) -> Optional[Execution]:
-    if event.content.type in ["Execution"]:
-        cls: Record = globals()[event.content.type]
-        execution = await cls.from_post(event)
-    else:  # amend
-        execution = await Record.fetch(event.content.ref)
-    assert isinstance(execution, Execution)
+    execution = await try_get_execution_from_message(event)
     return await run_execution(execution)
