@@ -1,6 +1,7 @@
-pydantic
+aars~=0.3.3
 aiohttp
 aleph-sdk-python
-aars~=0.3.3
-pandas
 fastapi
+pandas
+pydantic
+semver
