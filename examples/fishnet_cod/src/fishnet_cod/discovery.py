@@ -1,6 +1,6 @@
 from typing import Optional, List
 
-from aleph_client import UserSession
+from aleph.sdk import AlephClient
 from aleph_message.models import ProgramMessage, MessageType
 
 from .constants import FISHNET_DEPLOYMENT_CHANNEL
@@ -8,7 +8,7 @@ from .constants import FISHNET_DEPLOYMENT_CHANNEL
 
 async def discover_executors(
     owner: str,
-    session: UserSession,
+    session: AlephClient,
     channel: str = FISHNET_DEPLOYMENT_CHANNEL,
     tags: Optional[List[str]] = None,
 ) -> List[ProgramMessage]:

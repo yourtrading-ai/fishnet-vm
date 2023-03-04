@@ -8,3 +8,6 @@ EXECUTOR_MESSAGE_FILTER = [
         "post_type": ["Execution", "amend"],
     }
 ]
+
+VM_URL_PATH = "https://aleph.sh/vm/{hash}"
+VM_URL_HOST = "https://{hash_base32}.aleph.sh"
