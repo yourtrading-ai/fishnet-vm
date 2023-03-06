@@ -251,9 +251,6 @@ async def get_executions(
         raise HTTPException(status_code=404, detail="No Execution found")
     return await execution_requests
 
-@app.get("/executions/{dataset_ID}")
-async def get_executions_by_dataset(dataset_ID: str) -> List[Execution]:
-    return await Execution.where_eq(datasetID=dataset_ID)
 
 @app.get("/executions/all")
 async def get_all_executions(page: Optional[int] = None, page_size: Optional[int] = None) -> \
@@ -367,7 +364,7 @@ async def upload_algorithm(algorithm: UploadAlgorithmRequest) -> Algorithm:
 
 @app.post("/executions/request")
 async def request_execution(
-    execution: RequestExecutionRequest,
+        execution: RequestExecutionRequest,
 ) -> RequestExecutionResponse:
     """
     This endpoint is used to request an execution.
