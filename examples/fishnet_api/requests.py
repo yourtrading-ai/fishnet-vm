@@ -1,8 +1,7 @@
 from typing import List, Optional, Tuple
 
+from fishnet_cod import Execution, Permission, Timeseries
 from pydantic import BaseModel
-
-from fishnet_cod import Execution, Permission, Timeseries, Dataset, Algorithm
 
 
 class TimeseriesItem(BaseModel):
@@ -41,10 +40,18 @@ class RequestExecutionRequest(BaseModel):
     status: Optional[str]
 
 
+class ExecutionStatusHistory(BaseModel):
+    revision_hash: str
+    status: str
+    timestamp: float
+
+
+class ExecutionResponse(BaseModel):
+    execution: Execution
+    statusHistory: List[ExecutionStatusHistory]
+
+
 class RequestExecutionResponse(BaseModel):
     execution: Execution
     permissionRequests: Optional[List[Permission]]
     unavailableTimeseries: Optional[List[Timeseries]]
-
-
-

@@ -99,22 +99,26 @@ class Result(Record):
     data: str
 
 
-# indexes to fetch by owner
-Index(Dataset, "owner")
-Index(Algorithm, "owner")
-Index(Algorithm, "name")
-Index(Execution, "owner")
+# indexes to fetch data for permissions
 Index(Permission, "owner")
-Index(Timeseries, "owner")
-
-# index to fetch permissions by timeseriesID and requestor
-Index(Permission, ["requestor", "timeseriesID", "status"])
-Index(Permission, "id_hash")
-Index(Permission, "status")
-Index(Execution, "datasetID")
-Index(Dataset, "timeseriesIDs")
-
-# index to fetch execution by the status
-Index(Execution, "status")
+Index(Permission, ["requestor", "timeseriesID"])
 Index(Permission, "timeseriesID")
 Index(Permission, ["timeseriesID", "requestor"])
+Index(Permission, "requestor")
+
+
+# indexes to fetch data for Executions
+Index(Execution, "owner")
+Index(Execution, "datasetID")
+Index(Execution, "status")
+
+# indexes to fetch data for Timeseries
+Index(Timeseries, "owner")
+
+# indexes to fetch data for Algorithms
+Index(Algorithm, "owner")
+
+# indexes to fetch data for Datasets
+Index(Dataset, "owner")
+Index(Dataset, "timeseriesIDs")
+

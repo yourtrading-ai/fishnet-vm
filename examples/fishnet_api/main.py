@@ -98,7 +98,8 @@ async def index():
 
 
 @app.get("/datasets")
-async def datasets(view_as: Optional[str]=None, by: Optional[str]=None, page: Optional[int]=None, page_size: Optional[int]=None) -> List[
+async def datasets(view_as: Optional[str] = None, by: Optional[str] = None, page: Optional[int] = None,
+                   page_size: Optional[int] = None) -> List[
     Tuple[Dataset, Optional[DatasetPermissionStatus]]]:
     """
     Get all datasets.
@@ -167,50 +168,66 @@ async def datasets(view_as: Optional[str]=None, by: Optional[str]=None, page: Op
 
 
 @app.get('/user/{userAddress}/permissions/incoming')
-async def in_permission_requests(userAddress: Optional[str]) -> List[Permission]:
-    permission_records = await Permission.where_eq(requestor=userAddress)
+async def in_permission_requests(userAddress: str) -> List[Permission]:
+    permission_records = await Permission.where_eq(owner=userAddress)
     return permission_records
+
 
 @app.get('/user/{userAddress}/permissions/outgoing')
-async def out_permission_requests(userAddress: Optional[str]) -> List[Permission]:
+async def out_permission_requests(userAddress: str) -> List[Permission]:
     permission_records = await Permission.where_eq(requestor=userAddress)
     return permission_records
-
-
-
 
 
 @app.get("/query/algorithms")
-async def own_algorithms(name: Optional[str] = None, by: Optional[str] = None, page: Optional[int] = None,
-                         page_size: Optional[int] = None) -> List[Algorithm]:
+async def query_algorithms(id: Optional[str] = None, name: Optional[str] = None, by: Optional[str] = None,
+                           page: Optional[int] = None,
+                           page_size: Optional[int] = None) -> List[Algorithm]:
     '''
   - query for own algos
   - query other algos
   - page, page_size and by
   '''
 
+    if id:
+        algo_id = await Algorithm.fetch(id)
+        if not algo_id:
+            raise HTTPException(status_code=404, detail='No Algorithms found')
+        return algo_id
+
     if name:
         algo_name = await Algorithm.where_eq(name=name)
         if not algo_name:
-            raise HTTPException(status_code=404,detail='No Algorithms found')
+            raise HTTPException(status_code=404, detail='No Algorithms found')
         return algo_name
+
     elif by:
         algo_owner = await Algorithm.where_eq(owner=by)
         if not algo_owner:
-            raise HTTPException(status_code=404,detail='No Algorithm found')
+            raise HTTPException(status_code=404, detail='No Algorithm found')
         return algo_owner
+
     elif page or page_size:
         return await Algorithm.fetch_all(page=page, page_size=page_size)
+
     else:
-        raise HTTPException(status_code=404,detail='No value found')
+        return await Algorithm.fetch_all(page=1)
 
 
-# @app.get('/execution?by={}&page={}')
-# async def get_execution(by=str):
-#     execution = await Execution.where_eq(owner=by)
-#     execution_revision_id = execution[0].revision_hashes
-#     for i in execution_revision_id:
-#         i
+# @app.get('/execution/')
+# async def get_execution(by=str) -> ExecutionStatusResponse:
+#     executions = await Execution.where_eq(owner=by)
+#     if not executions:
+#         raise HTTPException(status_code=404, detail='No Execution found')
+#     executions_rec = []
+#     for rec in executions:
+#
+#         for hash in rec.revision_hashes:
+#             _i = await rec.fetch_revision(rev_hash=hash)
+#             _i.
+
+
+#   return executions_rec
 
 
 @app.get("/user/{address}/algorithms")
@@ -219,8 +236,14 @@ async def get_user_algorithms(address: str) -> List[Algorithm]:
 
 
 @app.get("/executions")
-async def get_executions(page: Optional[int]=None, page_size: Optional[int]=None) -> List[Execution]:
-    return await Execution.fetch_all(page=page, page_size=page_size)
+async def get_executions(
+        dataset_id: Optional[str] = None,
+        by: Optional[str] = None,
+        status: Optional[ExecutionStatus] = None,
+        page: Optional[int] = None,
+        page_size: Optional[int] = None
+) -> ExecutionResponse:
+    pass
 
 
 @app.get("/executions/{dataset_ID}")
@@ -228,9 +251,9 @@ async def get_executions_by_dataset(dataset_ID: str) -> List[Execution]:
     return await Execution.where_eq(datasetID=dataset_ID)
 
 
-@app.get("/user/{address}/executions")
-async def get_user_executions(address: str) -> List[Execution]:
-    return await Execution.where_eq(owner=address)
+@app.get("/user/{status}/executions")
+async def get_executions_with_status(status: ExecutionStatus) -> List[Execution]:
+    return await Execution.where_eq(status=status)
 
 
 @app.get("/user/{address}/results")
