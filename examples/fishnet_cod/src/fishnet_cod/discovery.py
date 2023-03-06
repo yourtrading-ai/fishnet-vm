@@ -21,3 +21,20 @@ async def discover_executors(
             message_type=MessageType.program,
         )
     return resp.messages
+
+
+async def discover_apis(
+    owner: str,
+    session: AlephClient,
+    channel: str = FISHNET_DEPLOYMENT_CHANNEL,
+    tags: Optional[List[str]] = None,
+) -> List[ProgramMessage]:
+    tags = tags if tags else ["api"]
+    with session:
+        resp = await session.get_messages(
+            channels=[channel],
+            addresses=[owner],
+            tags=tags,
+            message_type=MessageType.program,
+        )
+    return resp.messages
