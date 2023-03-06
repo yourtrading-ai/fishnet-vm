@@ -69,6 +69,7 @@ class Execution(Record):
     owner: str
     status: ExecutionStatus = ExecutionStatus.REQUESTED
     resultID: Optional[str]
+    params: Optional[dict]
 
 
 class PermissionStatus(str, Enum):

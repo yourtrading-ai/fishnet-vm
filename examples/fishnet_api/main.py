@@ -98,8 +98,7 @@ async def index():
 
 
 @app.get("/datasets")
-async def datasets(view_as: Optional[str] = None, by: Optional[str] = None, page: Optional[int] = None,
-                   page_size: Optional[int] = None) -> List[
+async def datasets(view_as: Optional[str], by: Optional[str], page: Optional[int], page_size: Optional[int]) -> List[
     Tuple[Dataset, Optional[DatasetPermissionStatus]]]:
     """
     Get all datasets.
@@ -111,14 +110,9 @@ async def datasets(view_as: Optional[str] = None, by: Optional[str] = None, page
     # - for the Owner (by) parameter:
     #     - fetch all datasets for the owner
 
-    if by:
-        datasets = await Dataset.where_eq(owner=by).page(page=page, page_size=page_size)
-    else:
-        datasets = await Dataset.fetch_objects().page(page=page, page_size=page_size).page(page=page,
-                                                                                           page_size=page_size)
+    ds_by_owner = await Dataset.fetch_all(page=page, page_size=page_size)
     ts_ids = []
-
-    for rec in datasets:
+    for rec in ds_by_owner:
         ts_ids.append(rec.timeseriesIDs)
 
     # convert into numpy array
@@ -136,7 +130,7 @@ async def datasets(view_as: Optional[str] = None, by: Optional[str] = None, page
     # This whole block should be executed for each fetched Dataset.
     # Also, return the Dataset with it, not only the PermissionStatus.
 
-    dataset_by_requestor = await Dataset.where_eq(timeseriesIDs=ts_ids_lst).page(page=page, page_size=page_size)
+    dataset_by_requestor = await Dataset.where_eq(timeseriesIDs=ts_ids_lst)
     #   - get all permissions for each timeseries & given requestor
     returned_datasets = []
 
@@ -148,6 +142,9 @@ async def datasets(view_as: Optional[str] = None, by: Optional[str] = None, page
         # if there is no permission records its mean  dataset are not requested
         if not permission_records:
             returned_datasets.append((rec, DatasetPermissionStatus.NOT_REQUESTED))
+            continue
+
+        permission_status = []
         for perm_rec in permission_records:
             permission_status.append(perm_rec.status)
         #   - respond with permission for dataset as approved, if all permissions are approved
@@ -159,7 +156,6 @@ async def datasets(view_as: Optional[str] = None, by: Optional[str] = None, page
         #     - respond with pending if at least one is still pending
         elif PermissionStatus.REQUESTED in permission_status:
             returned_datasets.append((rec, DatasetPermissionStatus.REQUESTED))
-
     return returned_datasets
 
 
@@ -255,6 +251,9 @@ async def get_executions(
         raise HTTPException(status_code=404, detail="No Execution found")
     return await execution_requests
 
+@app.get("/executions/{dataset_ID}")
+async def get_executions_by_dataset(dataset_ID: str) -> List[Execution]:
+    return await Execution.where_eq(datasetID=dataset_ID)
 
 @app.get("/executions/all")
 async def get_all_executions(page: Optional[int] = None, page_size: Optional[int] = None) -> \
@@ -331,7 +330,10 @@ async def upload_dataset(dataset: UploadDatasetRequest) -> Dataset:
         old_dataset = resp[0] if resp else None
         if old_dataset is not None:
             if old_dataset.owner != dataset.owner:
-                raise HTTPException(status_code=403, detail="Cannot overwrite dataset that is not owned by you")
+                raise HTTPException(
+                    status_code=403,
+                    detail="Cannot overwrite dataset that is not owned by you",
+                )
             old_dataset.name = dataset.name
             old_dataset.desc = dataset.desc
             old_dataset.timeseriesIDs = dataset.timeseriesIDs
@@ -352,7 +354,10 @@ async def upload_algorithm(algorithm: UploadAlgorithmRequest) -> Algorithm:
         old_algorithm = resp[0] if resp else None
         if old_algorithm is not None:
             if old_algorithm.owner != algorithm.owner:
-                raise HTTPException(status_code=403, detail="Cannot overwrite algorithm that is not owned by you")
+                raise HTTPException(
+                    status_code=403,
+                    detail="Cannot overwrite algorithm that is not owned by you",
+                )
             old_algorithm.name = algorithm.name
             old_algorithm.desc = algorithm.desc
             old_algorithm.code = algorithm.code
@@ -362,7 +367,7 @@ async def upload_algorithm(algorithm: UploadAlgorithmRequest) -> Algorithm:
 
 @app.post("/executions/request")
 async def request_execution(
-        execution: RequestExecutionRequest,
+    execution: RequestExecutionRequest,
 ) -> RequestExecutionResponse:
     """
     This endpoint is used to request an execution.
@@ -378,7 +383,9 @@ async def request_execution(
     # allow execution if dataset owner == execution owner
     if dataset.owner == execution.owner and dataset.ownsAllTimeseries:
         execution.status = ExecutionStatus.PENDING
-        return RequestExecutionResponse(execution=await Execution(**execution.dict()).save())
+        return RequestExecutionResponse(
+            execution=await Execution(**execution.dict()).save()
+        )
 
     # check if execution owner has permission to read all timeseries
     requested_timeseries = await Timeseries.fetch(dataset.timeseriesIDs).all()
@@ -457,7 +464,9 @@ async def approve_permissions(permission_hashes: List[str]) -> List[Permission]:
 
     permission_records = await Permission.fetch(permission_hashes).all()
     if not permission_records:
-        raise HTTPException(status_code=404, detail="No Permission Found with this Hashes")
+        raise HTTPException(
+            status_code=404, detail="No Permission Found with this Hashes"
+        )
 
     for rec in permission_records:
         rec.status = PermissionStatus.GRANTED
@@ -492,7 +501,9 @@ async def deny_permissions(permission_hashes: List[str]) -> List[Permission]:
     """
     permission_records = await Permission.fetch(permission_hashes).all()
     if not permission_records:
-        raise HTTPException(status_code=404, detail="No Permission found with this Hashes")
+        raise HTTPException(
+            status_code=404, detail="No Permission found with this Hashes"
+        )
 
     ts_ids = []
     requests = []
