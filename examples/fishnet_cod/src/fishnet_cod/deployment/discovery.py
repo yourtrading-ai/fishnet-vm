@@ -3,7 +3,7 @@ from typing import Optional, List
 from aleph.sdk import AlephClient
 from aleph_message.models import ProgramMessage, MessageType
 
-from .constants import FISHNET_DEPLOYMENT_CHANNEL
+from ..constants import FISHNET_DEPLOYMENT_CHANNEL
 
 
 async def discover_executors(
