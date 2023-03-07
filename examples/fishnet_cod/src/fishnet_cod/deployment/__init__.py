@@ -17,8 +17,13 @@ from aleph.sdk.utils import create_archive
 from aleph_message.models import StoreMessage, MessageType, ProgramMessage
 
 from .discovery import discover_executors, discover_apis
-from ..constants import FISHNET_DEPLOYMENT_CHANNEL, EXECUTOR_MESSAGE_FILTER, VM_URL_PATH, VM_URL_HOST, \
-    API_MESSAGE_FILTER
+from ..constants import (
+    FISHNET_DEPLOYMENT_CHANNEL,
+    EXECUTOR_MESSAGE_FILTER,
+    VM_URL_PATH,
+    VM_URL_HOST,
+    API_MESSAGE_FILTER,
+)
 
 from ..version import __version__, VERSION_STRING
 
@@ -33,10 +38,10 @@ class SourceType(Enum):
 
 
 async def upload_source(
-        deployer_session,
-        path: Path,
-        source_type: SourceType,
-        channel=FISHNET_DEPLOYMENT_CHANNEL
+    deployer_session,
+    path: Path,
+    source_type: SourceType,
+    channel=FISHNET_DEPLOYMENT_CHANNEL,
 ) -> StoreMessage:
     logger.debug(f"Reading {source_type.name} file")
     with open(path, "rb") as fd:
@@ -68,10 +73,17 @@ async def build_and_upload_requirements(
     source_type: SourceType,
     channel: str = FISHNET_DEPLOYMENT_CHANNEL,
 ) -> StoreMessage:
-    if source_type != SourceType.EXECUTOR_REQUIREMENTS and source_type != SourceType.EXECUTOR_REQUIREMENTS:
-        raise Exception(f"Source type {source_type.name} is not supported for requirements upload")
+    if (
+        source_type != SourceType.EXECUTOR_REQUIREMENTS
+        and source_type != SourceType.EXECUTOR_REQUIREMENTS
+    ):
+        raise Exception(
+            f"Source type {source_type.name} is not supported for requirements upload"
+        )
     logger.debug(f"Building {source_type.name}")
-    opt_packages = Path("/opt/packages")  # /opt/packages is by default imported into Python
+    opt_packages = Path(
+        "/opt/packages"
+    )  # /opt/packages is by default imported into Python
     # check if directory exists, clean if necessary
     if not opt_packages.exists():
         opt_packages.mkdir()
@@ -92,7 +104,9 @@ async def build_and_upload_requirements(
     # remove temporary directory
     shutil.rmtree(opt_packages)
     # upload requirements
-    return await upload_source(deployer_session, path=squashfs_path, source_type=source_type, channel=channel)
+    return await upload_source(
+        deployer_session, path=squashfs_path, source_type=source_type, channel=channel
+    )
 
 
 async def deploy_executors(
@@ -137,11 +151,15 @@ async def deploy_executors(
     # If any are equal, throw error because of repeated deployment
 
     # Upload the source code with new version
-    user_code = await upload_source(deployer_session, path_object, source_type=SourceType.EXECUTOR)
+    user_code = await upload_source(
+        deployer_session, path_object, source_type=SourceType.EXECUTOR
+    )
 
     # Upload the requirements image
     requirements = await build_and_upload_requirements(
-        path_object / "requirements.txt", deployer_session, source_type=SourceType.EXECUTOR_REQUIREMENTS
+        path_object / "requirements.txt",
+        deployer_session,
+        source_type=SourceType.EXECUTOR_REQUIREMENTS,
     )
 
     vm_messages: List[ProgramMessage] = []
@@ -159,10 +177,8 @@ async def deploy_executors(
         volumes = [
             ImmutableVolume(ref=requirements.item_hash).dict(),
             PersistentVolume(
-                persistence="host",
-                name=name,
-                size_mib=volume_size_mib
-            ).dict()
+                persistence="host", name=name, size_mib=volume_size_mib
+            ).dict(),
         ]
 
         # Register the program
@@ -182,7 +198,10 @@ async def deploy_executors(
                 encoding=encoding,
                 volumes=volumes,
                 subscriptions=EXECUTOR_MESSAGE_FILTER,
-                metadata={"tags": ["fishnet", SourceType.EXECUTOR.name, VERSION_STRING], "time_slice": slice_string},
+                metadata={
+                    "tags": ["fishnet", SourceType.EXECUTOR.name, VERSION_STRING],
+                    "time_slice": slice_string,
+                },
             )
         logger.debug("Upload finished")
 
@@ -203,7 +222,7 @@ async def deploy_executors(
     return vm_messages
 
 
-def deploy_api(
+async def deploy_api(
     api_path: Path,
     deployer_session: AuthenticatedAlephClient,
     executors: List[ProgramMessage],
@@ -222,9 +241,7 @@ def deploy_api(
     latest_source = fetch_latest_source(deployer_session, source_code_refs)
     latest_protocol_version = VersionInfo.parse(latest_source.content.protocol_version)
     latest_apis = [
-        api
-        for api in api_messages
-        if api.content.code.ref == latest_source.item_hash
+        api for api in api_messages if api.content.code.ref == latest_source.item_hash
     ]
 
     # Create new source archive from local files and hash it
@@ -238,12 +255,14 @@ def deploy_api(
         )
 
     # Upload the source code with new version
-    user_code = await upload_source(deployer_session, path=path_object, source_type=SourceType.API)
+    user_code = await upload_source(
+        deployer_session, path=path_object, source_type=SourceType.API
+    )
     # Upload the requirements
     requirements = await build_and_upload_requirements(
         requirements_path=api_path / "requirements.txt",
         deployer_session=deployer_session,
-        source_type=SourceType.API_REQUIREMENTS
+        source_type=SourceType.API_REQUIREMENTS,
     )
 
     # Create immutable volume with python dependencies
@@ -251,13 +270,15 @@ def deploy_api(
         ImmutableVolume(ref=requirements.item_hash).dict(),
     ]
 
+    name = f"api-v{VERSION_STRING}"
+
     # Register the program
     with deployer_session as session:
         message, status = session.create_program(
             program_ref=user_code.item_hash,
             entrypoint="main:app",
             runtime="latest",
-            storage_engine=StorageEnum.storage,
+            storage_engine=StorageEnum(user_code.content.item_type),
             channel=channel,
             memory=memory,
             vcpus=vcpus,
@@ -266,8 +287,27 @@ def deploy_api(
             encoding=encoding,
             volumes=volumes,
             subscriptions=API_MESSAGE_FILTER,
-            metadata={"tags": ["fishnet", SourceType.API.name, VERSION_STRING]},
+            metadata={
+                "tags": ["fishnet", SourceType.API.name, VERSION_STRING],
+                "executors": [executor.item_hash for executor in executors],
+            },
         )
+
+    logger.debug("Upload finished")
+
+    hash: str = message.item_hash
+    hash_base32 = b32encode(b16decode(hash.upper())).strip(b"=").lower().decode()
+
+    logger.info(
+        f"Fishnet API {name} deployed. \n\n"
+        "Available on:\n"
+        f"  {VM_URL_PATH.format(hash=hash)}\n"
+        f"  {VM_URL_HOST.format(hash_base32=hash_base32)}\n"
+        "Visualise on:\n  https://explorer.aleph.im/address/"
+        f"{message.chain}/{message.sender}/message/PROGRAM/{hash}\n"
+    )
+
+    return message
 
 
 def fetch_latest_source(deployer_session, source_code_refs):
@@ -281,11 +321,13 @@ def fetch_latest_source(deployer_session, source_code_refs):
         source: StoreMessage
         assert (
             source.content.protocol_version
-        ), "[PANIC] Encountered source_code message with no version!\n" + str(source.json())
+        ), "[PANIC] Encountered source_code message with no version!\n" + str(
+            source.json()
+        )
         if not latest_source:
             latest_source = source
         elif VersionInfo.parse(source.content.protocol_version) == VersionInfo.parse(
-                latest_source.content.protocol_version
+            latest_source.content.protocol_version
         ):
             latest_source = source
     return latest_source
