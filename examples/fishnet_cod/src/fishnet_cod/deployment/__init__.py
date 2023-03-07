@@ -129,7 +129,7 @@ async def deploy_executors(
     )
 
     # Get latest version executors and source code
-    latest_source = fetch_latest_source(deployer_session, source_code_refs)
+    latest_source = await fetch_latest_source(deployer_session, source_code_refs)
     latest_protocol_version = VersionInfo.parse(latest_source.content.protocol_version)
     latest_executors = [
         executor
@@ -238,7 +238,7 @@ async def deploy_api(
     )
     source_code_refs = set([api.content.code.ref for api in api_messages])
 
-    latest_source = fetch_latest_source(deployer_session, source_code_refs)
+    latest_source = await fetch_latest_source(deployer_session, source_code_refs)
     latest_protocol_version = VersionInfo.parse(latest_source.content.protocol_version)
     latest_apis = [
         api for api in api_messages if api.content.code.ref == latest_source.item_hash
@@ -310,7 +310,7 @@ async def deploy_api(
     return message
 
 
-def fetch_latest_source(deployer_session, source_code_refs):
+async def fetch_latest_source(deployer_session, source_code_refs):
     # Get latest version executors and source code
     with deployer_session:
         source_messages = await deployer_session.get_messages(
