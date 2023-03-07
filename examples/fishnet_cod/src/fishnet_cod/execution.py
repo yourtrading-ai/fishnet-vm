@@ -46,7 +46,10 @@ async def run_execution(execution: Execution) -> Optional[Execution]:
             return await set_failed(execution, f"Failed to parse algorithm code: {e}")
 
         if "run" not in locals():
-            return await set_failed(execution, "No run(df: DataFrame, params: Optional[dict]=None) function found")
+            return await set_failed(
+                execution,
+                "No run(df: DataFrame, params: Optional[dict]=None) function found",
+            )
 
         try:
             dataset = (await Dataset.fetch(execution.datasetID))[0]
