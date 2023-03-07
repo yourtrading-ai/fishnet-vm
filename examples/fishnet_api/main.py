@@ -8,8 +8,8 @@ from aleph_message.models import PostMessage
 logger = logging.getLogger(__name__)
 
 logger.debug("import aleph_client")
-from aleph_client.vm.cache import VmCache, TestVmCache
-from aleph_client.vm.app import AlephApp
+from aleph.sdk.vm.cache import VmCache, TestVmCache
+from aleph.sdk.vm.app import AlephApp
 
 logger.debug("import aars")
 from aars import AARS
@@ -99,24 +99,27 @@ async def index():
 
 @app.get("/datasets")
 async def datasets(
-        view_as: Optional[str],
-        by: Optional[str],
-        page: Optional[int],
-        page_size: Optional[int],
+        view_as: Optional[str] = None,
+        by: Optional[str] = None,
+        page: Optional[int] = None,
+        page_size: Optional[int] = None,
 ) -> List[Tuple[Dataset, Optional[DatasetPermissionStatus]]]:
     """
     Get all datasets. Returns a list of tuples of datasets and their permission status for the given `view_as` user.
     If `view_as` is not given, the permission status will be `none` for all datasets.
-    :param view_as: address of the user to view the datasets as and give additional permission information
-    :param by: address of the dataset owner to filter by
-    :param page_size: size of the pages to fetch
-    :param page: page number to fetch
+    :param `view_as`: address of the user to view the datasets as and give additional permission information
+    :param `by`: address of the dataset owner to filter by
+    :param `page_size´: size of the pages to fetch
+    :param `page`: page number to fetch
     """
+    if by:
+        datasets = await Dataset.where_eq(owner=by).all()
 
-    ds_by_owner = await Dataset.fetch_objects().page(page=page, page_size=page_size)
-    ts_ids = []
-    for rec in ds_by_owner:
-        ts_ids.append(rec.timeseriesIDs)
+    else:
+        datasets = await Dataset.fetch_objects().page(page=page, page_size=page_size)
+
+    datasets = await Dataset.fetch_objects().page(page=page, page_size=page_size)
+    ts_ids = [rec.timeseriesIDs for rec in datasets]
 
     ts_ids_np = np.array(ts_ids)
     ts_ids_lists = np.hstack(ts_ids_np)
@@ -167,7 +170,7 @@ async def out_permission_requests(
     return permission_records
 
 
-@app.get("/query/algorithms")
+@app.get("/algorithms")
 async def query_algorithms(
         id: Optional[str] = None,
         name: Optional[str] = None,
@@ -428,8 +431,8 @@ async def approve_permissions(permission_hashes: List[str]) -> List[Permission]:
     """
     Approve permission.
     This EndPoint will approve a list of permissions by their item hashes
-    If an `id_hashes` is provided, it will change all the Permission status
-    to Granted.
+    If an 'id_hashes' is provided, it will change all the Permission status
+    to 'Granted'.
     """
 
     ts_ids = []
@@ -469,7 +472,7 @@ async def deny_permissions(permission_hashes: List[str]) -> List[Permission]:
     Deny permission.
     This EndPoint will deny a list of permissions by their item hashes
     If an `id_hashes` is provided, it will change all the Permission status
-    to Denied.
+    to 'Denied'.
     """
     permission_records = await Permission.fetch(permission_hashes).all()
     if not permission_records:
@@ -504,6 +507,8 @@ async def set_dataset_available(dataset_id: str, available: bool) -> Dataset:
     """
     Set a dataset to be available or not. This will also update the status of all
     executions that are waiting for permission on this dataset.
+    param `dataset_id':put the dataset hash here
+    param 'available':put the Boolean value
     """
 
     requests = []
