@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple
 
-from fishnet_cod import Execution, Permission, Timeseries
+from fishnet_cod.model import Execution, Permission, Timeseries
 from pydantic import BaseModel
 
 

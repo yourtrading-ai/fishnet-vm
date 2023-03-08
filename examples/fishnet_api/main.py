@@ -3,6 +3,9 @@ import logging
 import os
 from os import listdir, getenv
 
+from aleph.sdk import AuthenticatedAlephClient
+from aleph.sdk.chains.sol import get_fallback_account
+from aleph.sdk.conf import settings
 from aleph_message.models import PostMessage
 
 logger = logging.getLogger(__name__)
@@ -19,7 +22,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 logger.debug("import project modules")
-from fishnet_cod import *
+from fishnet_cod.model import *
 from .requests import *
 import numpy as np
 
@@ -42,7 +45,8 @@ if getenv("TEST_CACHE") is not None and getenv("TEST_CACHE").lower() == "true":
 else:
     cache = VmCache()
 app = AlephApp(http_app=http_app)
-aars = AARS(channel="FISHNET_TEST", cache=cache)
+session = AuthenticatedAlephClient(get_fallback_account(), settings.API_HOST)
+aars = AARS(channel="FISHNET_TEST", cache=cache, session=session)
 
 
 async def re_index():
